@@ -22,7 +22,7 @@ def gcd( a, b ):
 			b = c
 		return a
 
-# return base^exp mod modulus
+# trả về base^exp mod modulus
 def modexp( base, exp, modulus ):
 		return pow(base, exp, modulus)
 
@@ -35,7 +35,7 @@ def SS( num, iConfidence ):
 						return False
 		return True
 
-# jacobi symbol of a, n
+# tính jacobi của a, n
 def jacobi( a, n ):
 		if a == 0:
 				if n == 1:
@@ -64,135 +64,105 @@ def jacobi( a, n ):
 				else:
 						return jacobi(n, a )
 
-#finds a primitive root for prime p
-#this function was implemented from the algorithm described here:
-#http://modular.math.washington.edu/edu/2007/spring/ent/ent-html/node31.html
+# tìm một số g là thành phần nguyên thủy của số nguyên tố p
+# thuật toán được sử dụng trong hàm: http://modular.math.washington.edu/edu/2007/spring/ent/ent-html/node31.html
 def find_primitive_root( p ):
 		if p == 2:
 				return 1
-		#the prime divisors of p-1 are 2 and (p-1)/2 because
-		#p = 2x + 1 where x is a prime
+		# p-1 = 2 * (p-1)/2
 		p1 = 2
 		p2 = (p-1) // p1
 
-		#test random g's until one is found that is a primitive root mod p
+		# thử g ngẫu nhiên trong khoảng (2, p-1)
+		# cho đến khi tìm được 1 số g là thành phần nguyên thủy của p
 		while( 1 ):
 				g = random.randint( 2, p-1 )
-				#g is a primitive root if for all prime factors of p-1, p[i]
-				#g^((p-1)/p[i]) (mod p) is not congruent to 1
+				# g is a primitive root if for all prime factors of p-1, p[i]
+				# g^((p-1)/p[i]) (mod p) is not congruent to 1
 				if not (modexp( g, (p-1)//p1, p ) == 1):
 						if not modexp( g, (p-1)//p2, p ) == 1:
 								return g
 
-#find n bit prime
+# tìm một số nguyên tố với số bit = iNumBits
 def find_prime(iNumBits, iConfidence):
-		#keep testing until one is found
+		# thử ngẫu nhiên cho đến khi tìm được một số
 		while(1):
-				#generate potential prime randomly
 				p = random.randint( 2**(iNumBits-2), 2**(iNumBits-1) )
-				#make sure it is odd
+				# p phải là số lẻ
 				while( p % 2 == 0 ):
 						p = random.randint(2**(iNumBits-2),2**(iNumBits-1))
 
-				#keep doing this if the solovay-strassen test fails
+				# keep doing this if the solovay-strassen test fails
 				while( not SS(p, iConfidence) ):
 						p = random.randint( 2**(iNumBits-2), 2**(iNumBits-1) )
 						while( p % 2 == 0 ):
 								p = random.randint(2**(iNumBits-2), 2**(iNumBits-1))
 
-				#if p is prime compute p = 2*p + 1
-				#if p is prime, we have succeeded; else, start over
+				# if p is prime compute p = 2*p + 1
+				# if p is prime, we have succeeded; else, start over
 				p = p * 2 + 1
 				if SS(p, iConfidence):
 						return p
 
-#encodes bytes to integers mod p.  reads bytes from file
+# mã hóa message bytes --> integers
 def encode(sPlaintext, iNumBits):
 		byte_array = bytearray(sPlaintext, 'utf-16')
-
-		#z is the array of integers mod p
 		z = []
-
-		#each encoded integer will be a linear combination of k message bytes
-		#k must be the number of bits in the prime divided by 8 because each
-		#message byte is 8 bits long
 		k = iNumBits//8
-
-		#j marks the jth encoded integer
-		#j will start at 0 but make it -k because j will be incremented during first iteration
 		j = -1 * k
-		#num is the summation of the message bytes
 		num = 0
-		#i iterates through byte array
+
 		for i in range( len(byte_array) ):
-				#if i is divisible by k, start a new encoded integer
 				if i % k == 0:
 						j += k
 						num = 0
 						z.append(0)
-				#add the byte multiplied by 2 raised to a multiple of 8
 				z[j//k] += byte_array[i]*(2**(8*(i%k)))
 
-		#example
-				#if n = 24, k = n / 8 = 3
-				#z[0] = (summation from i = 0 to i = k)m[i]*(2^(8*i))
-				#where m[i] is the ith message byte
+		# ví dụ
+		# 		n = 24, k = n / 8 = 3
+		# 		z[0] = (tổng từ i = 0 đến i = k)m[i]*(2^(8*i))
+		# 		m[i] byte thứ i của tin nhắn is
 
-		#return array of encoded integers
 		return z
 
-#decodes integers to the original message bytes
+# giải mã integers -->  message bytes
 def decode(aiPlaintext, iNumBits):
-		#bytes array will hold the decoded original message bytes
 		bytes_array = []
 
-		#same deal as in the encode function.
-		#each encoded integer is a linear combination of k message bytes
-		#k must be the number of bits in the prime divided by 8 because each
-		#message byte is 8 bits long
 		k = iNumBits//8
 
-		#num is an integer in list aiPlaintext
 		for num in aiPlaintext:
-				#get the k message bytes from the integer, i counts from 0 to k-1
 				for i in range(k):
-						#temporary integer
 						temp = num
-						#j goes from i+1 to k-1
 						for j in range(i+1, k):
-								#get remainder from dividing integer by 2^(8*j)
 								temp = temp % (2**(8*j))
-						#message byte representing a letter is equal to temp divided by 2^(8*i)
 						letter = temp // (2**(8*i))
-						#add the message byte letter to the byte array
 						bytes_array.append(letter)
-						#subtract the letter multiplied by the power of two from num so
-						#so the next message byte can be found
 						num = num - (letter*(2**(8*i)))
 
-		#example
-		#if "You" were encoded.
-		#Letter        #ASCII
-		#Y              89
-		#o              111
-		#u              117
-		#if the encoded integer is 7696217 and k = 3
-		#m[0] = 7696217 % 256 % 65536 / (2^(8*0)) = 89 = 'Y'
-		#7696217 - (89 * (2^(8*0))) = 7696128
-		#m[1] = 7696128 % 65536 / (2^(8*1)) = 111 = 'o'
-		#7696128 - (111 * (2^(8*1))) = 7667712
-		#m[2] = 7667712 / (2^(8*2)) = 117 = 'u'
+		# example
+		# if "You" were encoded.
+		# Letter        #ASCII
+		# Y              89
+		# o              111
+		# u              117
+		# if the encoded integer is 7696217 and k = 3
+		# m[0] = 7696217 % 256 % 65536 / (2^(8*0)) = 89 = 'Y'
+		# 7696217 - (89 * (2^(8*0))) = 7696128
+		# m[1] = 7696128 % 65536 / (2^(8*1)) = 111 = 'o'
+		# 7696128 - (111 * (2^(8*1))) = 7667712
+		# m[2] = 7667712 / (2^(8*2)) = 117 = 'u'
 
 		decodedText = bytearray(b for b in bytes_array).decode('utf-16')
-
 		return decodedText
 
-#generates public key K1 (p, g, h) and private key K2 (p, g, x)
+# tạo khóa công khai K1 (p, g, h) và khóa bí mật K2 (p, g, x)
 def generate_keys(iNumBits=256, iConfidence=32):
-		#p is the prime
-		#g is the primitve root
-		#x is random in (0, p-1) inclusive
-		#h = g ^ x mod p
+		# p: số nguyên tố
+		# g: thành phần nguyên tố của p
+		# x: số ngẫu nhiên trên đoạn (0, p-1)
+		# h = g ^ x mod p
 		p = find_prime(iNumBits, iConfidence)
 		g = find_primitive_root(p)
 		g = modexp( g, 2, p )
@@ -212,21 +182,21 @@ def generate_keys(iNumBits=256, iConfidence=32):
 
 
 
-#encrypts a string sPlaintext using the public key k
+# mã hóa bản tin sPlaintext với khóa key
 def encrypt(key, sPlaintext):
 		z = encode(sPlaintext, key.iNumBits)
 
-	#cipher_pairs list will hold pairs (c, d) corresponding to each integer in z
+		# cipher_pairs sẽ gồm các cặp (c, d) ứng với mỗi số nguyên trong mảng z
 		cipher_pairs = []
-		#i is an integer in z
+		
 		for i in z:
-				#pick random y from (0, p-1) inclusive
+				# y: số ngẫu nhiên trên đoạn (0, p-1)
 				y = random.randint( 0, key.p )
-				#c = g^y mod p
+				# c = g^y mod p
 				c = modexp( key.g, y, key.p )
-				#d = ih^y mod p
+				# d = ih^y mod p
 				d = (i*modexp( key.h, y, key.p)) % key.p
-				#add the pair to the cipher pairs list
+				# thêm cặp (c, d) vào list cipher_pairs
 				cipher_pairs.append( [c, d] )
 
 		encryptedStr = ""
@@ -235,36 +205,33 @@ def encrypt(key, sPlaintext):
 	
 		return encryptedStr
 
-#performs decryption on the cipher pairs found in Cipher using
-#prive key K2 and writes the decrypted values to file Plaintext
+
+# giải mã với cặp mã hóa cipher với khóa bí mật key
 def decrypt(key, cipher):
-		#decrpyts each pair and adds the decrypted integer to list of plaintext integers
 		plaintext = []
 
 		cipherArray = cipher.split()
 		if (not len(cipherArray) % 2 == 0):
 				return "Malformed Cipher Text"
 		for i in range(0, len(cipherArray), 2):
-				#c = first number in pair
 				c = int(cipherArray[i])
-				#d = second number in pair
 				d = int(cipherArray[i+1])
 
-				#s = c^x mod p
+				# s = c^x mod p
 				s = modexp( c, key.x, key.p )
-				#plaintext integer = ds^-1 mod p
+				# plaintext integer = ds^-1 mod p
 				plain = (d*modexp( s, key.p-2, key.p)) % key.p
-				#add plain to list of plaintext integers
+				
 				plaintext.append( plain )
 
 		decryptedText = decode(plaintext, key.iNumBits)
 
-	#remove trailing null bytes
+		# loại bỏ bytes null
 		decryptedText = "".join([ch for ch in decryptedText if ch != '\x00'])
 
 		return decryptedText
 
-# test function
+# hàm kiểm tra
 def test(message):
 		assert (sys.version_info >= (3,4))
 		keys = generate_keys()
