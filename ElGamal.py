@@ -1,5 +1,10 @@
 import random
 import sys
+from tkinter import constants
+import miller_rabin.GenPrime as gp
+import miller_rabin.IsPrime as ip
+
+ATTEMPTS = 23
 
 class PrivateKey(object):
 	def __init__(self, p=None, g=None, x=None, iNumBits=0):
@@ -26,83 +31,18 @@ def gcd( a, b ):
 def modexp( base, exp, modulus ):
 		return pow(base, exp, modulus)
 
-def SS( num, iConfidence ):
-		for i in range(iConfidence):
-				a = random.randint( 1, num-1 )
-				if gcd( a, num ) > 1:
-						return False
-				if not jacobi( a, num ) % num == modexp ( a, (num-1)//2, num ):
-						return False
-		return True
-
-# tính jacobi của a, n
-def jacobi( a, n ):
-		if a == 0:
-				if n == 1:
-						return 1
-				else:
-						return 0
-		elif a == -1:
-				if n % 2 == 0:
-						return 1
-				else:
-						return -1
-		elif a == 1:
-				return 1
-		elif a == 2:
-				if n % 8 == 1 or n % 8 == 7:
-						return 1
-				elif n % 8 == 3 or n % 8 == 5:
-						return -1
-		elif a >= n:
-				return jacobi( a%n, n)
-		elif a%2 == 0:
-				return jacobi(2, n)*jacobi(a//2, n)
-		else:
-				if a % 4 == 3 and n%4 == 3:
-						return -1 * jacobi( n, a)
-				else:
-						return jacobi(n, a )
-
 # tìm một số g là thành phần nguyên thủy của số nguyên tố p
-# thuật toán được sử dụng trong hàm: http://modular.math.washington.edu/edu/2007/spring/ent/ent-html/node31.html
-def find_primitive_root( p ):
-		if p == 2:
-				return 1
-		# p-1 = 2 * (p-1)/2
-		p1 = 2
-		p2 = (p-1) // p1
-
-		# thử g ngẫu nhiên trong khoảng (2, p-1)
-		# cho đến khi tìm được 1 số g là thành phần nguyên thủy của p
-		while( 1 ):
-				g = random.randint( 2, p-1 )
-				# g is a primitive root if for all prime factors of p-1, p[i]
-				# g^((p-1)/p[i]) (mod p) is not congruent to 1
-				if not (modexp( g, (p-1)//p1, p ) == 1):
-						if not modexp( g, (p-1)//p2, p ) == 1:
-								return g
-
-# tìm một số nguyên tố với số bit = iNumBits
-def find_prime(iNumBits, iConfidence):
-		# thử ngẫu nhiên cho đến khi tìm được một số
-		while(1):
-				p = random.randint( 2**(iNumBits-2), 2**(iNumBits-1) )
-				# p phải là số lẻ
-				while( p % 2 == 0 ):
-						p = random.randint(2**(iNumBits-2),2**(iNumBits-1))
-
-				# keep doing this if the solovay-strassen test fails
-				while( not SS(p, iConfidence) ):
-						p = random.randint( 2**(iNumBits-2), 2**(iNumBits-1) )
-						while( p % 2 == 0 ):
-								p = random.randint(2**(iNumBits-2), 2**(iNumBits-1))
-
-				# if p is prime compute p = 2*p + 1
-				# if p is prime, we have succeeded; else, start over
-				p = p * 2 + 1
-				if SS(p, iConfidence):
-						return p
+def find_primitive_root(p):
+	if p == 2:
+		return 1
+	# p-1 = 2 * (p-1)/2
+	p1 = 2
+	p2 = (p-1) // p1
+	while( 1 ):
+		g = random.randint( 2, p-1 )
+		if not (pow( g, (p-1)//p1, p ) == 1):
+			if not pow( g, (p-1)//p2, p ) == 1:
+				return g
 
 # mã hóa message bytes --> integers
 def encode(sPlaintext, iNumBits):
@@ -128,18 +68,18 @@ def encode(sPlaintext, iNumBits):
 
 # giải mã integers -->  message bytes
 def decode(aiPlaintext, iNumBits):
-		bytes_array = []
+	bytes_array = []
 
-		k = iNumBits//8
+	k = iNumBits//8
 
-		for num in aiPlaintext:
-				for i in range(k):
-						temp = num
-						for j in range(i+1, k):
-								temp = temp % (2**(8*j))
-						letter = temp // (2**(8*i))
-						bytes_array.append(letter)
-						num = num - (letter*(2**(8*i)))
+	for num in aiPlaintext:
+		for i in range(k):
+			temp = num
+			for j in range(i+1, k):
+				temp = temp % (2**(8*j))
+			letter = temp // (2**(8*i))
+			bytes_array.append(letter)
+			num = num - (letter*(2**(8*i)))
 
 		# example
 		# if "You" were encoded.
@@ -154,16 +94,16 @@ def decode(aiPlaintext, iNumBits):
 		# 7696128 - (111 * (2^(8*1))) = 7667712
 		# m[2] = 7667712 / (2^(8*2)) = 117 = 'u'
 
-		decodedText = bytearray(b for b in bytes_array).decode('utf-16')
-		return decodedText
+	decodedText = bytearray(b for b in bytes_array).decode('utf-16')
+	return decodedText
 
 # tạo khóa công khai K1 (p, g, h) và khóa bí mật K2 (p, g, x)
-def generate_keys(iNumBits=256, iConfidence=32):
+def generate_keys(iNumBits=256):
 		# p: số nguyên tố
 		# g: thành phần nguyên tố của p
 		# x: số ngẫu nhiên trên đoạn (0, p-1)
 		# h = g ^ x mod p
-		p = find_prime(iNumBits, iConfidence)
+		p = gp.generatePrime(iNumBits, ATTEMPTS)
 		g = find_primitive_root(p)
 		g = modexp( g, 2, p )
 		x = random.randint( 1, (p - 1) // 2 )

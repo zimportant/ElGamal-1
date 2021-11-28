@@ -28,7 +28,7 @@ def getLowLevelPrime(n):
                 break
         else: return pc
  
-def isMillerRabinPassed(mrc):
+def isMillerRabinPassed(mrc, attempts):
     '''Run 20 iterations of Rabin Miller Primality test'''
     maxDivisionsByTwo = 0
     ec = mrc-1
@@ -46,23 +46,20 @@ def isMillerRabinPassed(mrc):
         return True
  
     # Set number of trials here
-    numberOfRabinTrials = 20
+    numberOfRabinTrials = attempts
     for i in range(numberOfRabinTrials):
         round_tester = random.randrange(2, mrc)
         if trialComposite(round_tester):
             return False
     return True
 
-def generatePrime(length):
+def generatePrime(length, attempts):
     if (length < 1):
         return -1
     is_prime = False
     while (not is_prime):
         prime_candidate = getLowLevelPrime(length)
-        if isMillerRabinPassed(prime_candidate):
+        if isMillerRabinPassed(prime_candidate, attempts):
             return prime_candidate
         else:
             continue
-
-prime = generatePrime(150)
-print(prime)

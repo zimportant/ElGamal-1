@@ -65,7 +65,7 @@ def keys_generate():
     decrypt_message_text.delete('1.0', END)
 
     # tạo khóa mới
-    p = ElGamal.find_prime(bitNum_value.get(), 32)
+    p = ElGamal.generate_keys(bitNum_value.get())
     p_text.delete('1.0', END)
     p_text.insert(END, p)
     g = ElGamal.find_primitive_root(p)
