@@ -1,11 +1,12 @@
 import random
 import sys
-from tkinter.constants import X
 import miller_rabin.GenPrime as gp
 import miller_rabin.IsPrime as ip
+import Euclid
+import TextProcessing as Text
 
 ATTEMPTS = 23
-ALPHABET = " abcdefjhijklmnopqrstuvwxyz0123456789"
+ALPHABET = "abcdefghijklmnopqrstuvwxyz 0123456789"
 
 class PrivateKey(object):
 	def __init__(self, a):
@@ -40,33 +41,12 @@ class CypherNum(object):
 	def gety2(self):
 		return self.y2
 
-def euclid( a, b ):
-	tempB = b
-	x1 = 0
-	y1 = 1
-	x2 = 1
-	y2 = 0
-	while b > 0:
-		q = a // b
-		r = a - b * q
-		a = b
-		b = r
-		x = x2 - x1 * q
-		x2 = x1
-		x1 = x 
-		y = y2 - y1 * q 
-		y2 = y1 
-		y1 = y 
-	if x2 < 0:
-		return x2 + tempB 
-	else:
-		return x2
-
-	return a
 
 # trả về base^exp mod modulus
 def modexp( base, exp, modulus ):
 		return pow(base, exp, modulus)
+
+#-----------------------------------------------SINH KHÓA-------------------------------------------------
 
 # tìm một số g là thành phần nguyên thủy của số nguyên tố p
 def find_primitive_root(p):
@@ -81,7 +61,7 @@ def find_primitive_root(p):
 				return g
 
 # tạo khóa công khai K1 (p, alpha, beta) và khóa bí mật K2 (a)
-def generate_random_keys(numBits=256):
+def generate_keys(numBits=256):
 	# p: số nguyên tố
 	# alpha: thành phần nguyên tố của p
 	# privateKey(a): số ngẫu nhiên trên đoạn (0, p-1)
@@ -93,78 +73,33 @@ def generate_random_keys(numBits=256):
 	return {'privateKey': privateKey, 'publicKey': publicKey}
 
 # Tạo khóa với p có trước
-def generate_key(p):
+def generate_key_with_p(p):
 	alpha = find_primitive_root(p)
 	privateKey = PrivateKey(random.randint(1, (p - 1)))
 	publicKey = PublicKey(p, alpha, privateKey)
 
 	return {'privateKey': privateKey, 'publicKey': publicKey}
 
-#---------------------------------------STRING TO NUMBER--------------------------------------
-def to_valid_text(text, alphabet):
-	text = text.lower()
-	validText = ""
-	for c in text:
-		if (alphabet.find(c) >= 0):
-			validText += c
-	return validText
 
-def char_to_int(char, alphabet):
-	return alphabet.find(char)
-
-def int_to_char(n, alphabet):
-	n = n % len(alphabet)
-	return alphabet[n]
-
-def text_to_num(text, alphabet):
-	textLen = len(text)
-	base = 1
-	num = 0
-	for i in range (0, textLen):
-		num += char_to_int(text[i], alphabet) * base
-		base *= len(alphabet)
-	return num
-
-def num_to_text(num, alphabet):
-	text = ""
-	length = len(alphabet)
-	while(num > length):
-		order = num % length
-		text += int_to_char(order, alphabet)
-		num = (num - order) // length
-	text += int_to_char(num % length, alphabet)
-	return text
-
-def unitLength(alphabetLength, p):
-	result = 0
-	while (p > alphabetLength):
-		result = result + 1
-		p = p // alphabetLength
-	return int(result)
-
-def split_text(text, length):
-	textLen = len(text)
-	if (textLen < length):
-		return {text}
-	chunks = []
-	chunks = [text[i: i + length] for i in range (0, textLen, length)]
-	return chunks
-
-#--------------------------------------------------------------------------------------------------
+#-----------------------------------------MÃ HÓA VÀ GIẢI MÃ------------------------------------------------
 # chuẩn hóa và chia message thành các đoạn có giá trị < p rồi mã hóa
 def encrypt_mess(message, publicKey, alphabet):
-	plainText = to_valid_text(message, alphabet)
+	# chuẩn hóa message -> plainText
+	plainText = Text.toValidText(message, alphabet)
 	cypherNum = []
 	unitText = []
-	unitText = split_text(plainText, unitLength(len(alphabet), publicKey.getp()))
+	# chia plainText thành các đoạn có giá trị < p
+	unitText = Text.splitText(plainText, Text.unitLength(len(alphabet), publicKey.getp()))
+	# mã hóa từng đoạn 
 	for unit in unitText:
 		cypherNum.append(encrypt_unit(unit, publicKey, alphabet))
 	return cypherNum
 
 # mã hóa đoạn tin unitText
 def encrypt_unit(unitText, publicKey, alphabet):
-	x = text_to_num(unitText, alphabet)
-	print(x)
+	x = Text.textToNum(unitText, alphabet)
+	# in ra giá trị đoạn unitText được chuyển từ text sang số (chưa mã hóa)
+	print("x: ", x)
 	return encrypt_num(x, publicKey)
 	
 # mã hóa đoạn tin có giá trị int = x 
@@ -189,10 +124,11 @@ def decrypt_mess(cypherNums, privateKey, publicKey, alphabet):
 def decrypt_unit(unitCypher, privateKey, publicKey, alphabet):
 	p = publicKey.getp()
 	a = privateKey.getvalue()
-	y1Reverse = euclid(unitCypher.gety1(), p)
+	y1Reverse = Euclid.inverseMod(unitCypher.gety1(), p)
 	decryptValue = (unitCypher.gety2() * (modexp(y1Reverse, a, p))) % p
+	# in ra giá trị đoạn unitCypher được giải mã (dạng số)
 	print("d:", decryptValue)
-	decryptText = num_to_text(decryptValue, alphabet)
+	decryptText = Text.numToText(decryptValue, alphabet)
 	return decryptText
 
 
