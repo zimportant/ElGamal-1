@@ -82,18 +82,33 @@ def generate_key_with_p(p):
 
 
 #-----------------------------------------MÃ HÓA VÀ GIẢI MÃ------------------------------------------------
+# trả về y1
+def merge_y1(encryptNums):
+	y1 = ""
+	for encryptUnit in encryptNums:
+		y1 += str(encryptUnit.gety1())
+		y1 += "\n"
+	return y1
+# trả về y2
+def merge_y2(encryptNums):
+	y2 = ""
+	for encryptUnit in encryptNums:
+		y2 += str(encryptUnit.gety2())
+		y2 += "\n"
+	return y2
+
 # chuẩn hóa và chia message thành các đoạn có giá trị < p rồi mã hóa
 def encrypt_mess(message, publicKey, alphabet):
 	# chuẩn hóa message -> plainText
 	plainText = Text.toValidText(message, alphabet)
-	cypherNum = []
+	cypherNums = []
 	unitText = []
 	# chia plainText thành các đoạn có giá trị < p
 	unitText = Text.splitText(plainText, Text.unitLength(len(alphabet), publicKey.getp()))
 	# mã hóa từng đoạn 
 	for unit in unitText:
-		cypherNum.append(encrypt_unit(unit, publicKey, alphabet))
-	return cypherNum
+		cypherNums.append(encrypt_unit(unit, publicKey, alphabet))
+	return cypherNums
 
 # mã hóa đoạn tin unitText
 def encrypt_unit(unitText, publicKey, alphabet):
@@ -139,6 +154,9 @@ publicKey = PublicKey(p, alpha, privateKey)
 mess = "To prepare for a good night’s sleep we are better off putting the brakes on caffeine consumption as early as 3 p.m"
 print("TEXT")
 e = encrypt_mess(mess, publicKey, ALPHABET)
+print("ENCRYPT")
+print("y1", merge_y1(e))
+print("y2", merge_y2(e))
 print("DECRYPT")
 d = decrypt_mess(e, privateKey, publicKey, ALPHABET)
 print("-----------------------------------------")
