@@ -1,31 +1,68 @@
 import random
 import sys
-from tkinter import constants
+from tkinter.constants import X
 import miller_rabin.GenPrime as gp
 import miller_rabin.IsPrime as ip
 
 ATTEMPTS = 23
+ALPHABET = " abcdefjhijklmnopqrstuvwxyz0123456789"
 
 class PrivateKey(object):
-	def __init__(self, p=None, g=None, x=None, iNumBits=0):
-		self.p = p
-		self.g = g
-		self.x = x
-		self.iNumBits = iNumBits
+	def __init__(self, a):
+		self.a = a
+	
+	def getvalue(self):
+		return self.a
 
 class PublicKey(object):
-	def __init__(self, p=None, g=None, h=None, iNumBits=0):
+	def __init__(self, p, alpha, privateKey):
 		self.p = p
-		self.g = g
-		self.h = h
-		self.iNumBits = iNumBits
+		self.alpha = alpha
+		self.beta = modexp(alpha, privateKey.getvalue(), p)
 
-def gcd( a, b ):
-		while b != 0:
-			c = a % b
-			a = b
-			b = c
-		return a
+	def getp(self):
+		return self.p
+	
+	def getalpha(self):
+		return self.alpha
+
+	def getbeta(self):
+		return self.beta
+
+class CypherNum(object):
+	def __init__(self, y1, y2):
+		self.y1 = y1
+		self.y2 = y2
+
+	def gety1(self):
+		return self.y1 
+	
+	def gety2(self):
+		return self.y2
+
+def euclid( a, b ):
+	tempB = b
+	x1 = 0
+	y1 = 1
+	x2 = 1
+	y2 = 0
+	while b > 0:
+		q = a // b
+		r = a - b * q
+		a = b
+		b = r
+		x = x2 - x1 * q
+		x2 = x1
+		x1 = x 
+		y = y2 - y1 * q 
+		y2 = y1 
+		y1 = y 
+	if x2 < 0:
+		return x2 + tempB 
+	else:
+		return x2
+
+	return a
 
 # trả về base^exp mod modulus
 def modexp( base, exp, modulus ):
@@ -35,148 +72,139 @@ def modexp( base, exp, modulus ):
 def find_primitive_root(p):
 	if p == 2:
 		return 1
-	# p-1 = 2 * (p-1)/2
 	p1 = 2
-	p2 = (p-1) // p1
+	p2 = (p - 1) // p1
 	while( 1 ):
 		g = random.randint( 2, p-1 )
 		if not (pow( g, (p-1)//p1, p ) == 1):
 			if not pow( g, (p-1)//p2, p ) == 1:
 				return g
 
-# mã hóa message bytes --> integers
-def encode(sPlaintext, iNumBits):
-		byte_array = bytearray(sPlaintext, 'utf-16')
-		z = []
-		k = iNumBits//8
-		j = -1 * k
-		num = 0
+# tạo khóa công khai K1 (p, alpha, beta) và khóa bí mật K2 (a)
+def generate_random_keys(numBits=256):
+	# p: số nguyên tố
+	# alpha: thành phần nguyên tố của p
+	# privateKey(a): số ngẫu nhiên trên đoạn (0, p-1)
+	p = gp.generatePrime(numBits, ATTEMPTS)
+	alpha = find_primitive_root(p)
+	privateKey = PrivateKey(random.randint(1, (p - 1)))
+	publicKey = PublicKey(p, alpha, privateKey)
 
-		for i in range( len(byte_array) ):
-				if i % k == 0:
-						j += k
-						num = 0
-						z.append(0)
-				z[j//k] += byte_array[i]*(2**(8*(i%k)))
+	return {'privateKey': privateKey, 'publicKey': publicKey}
 
-		# ví dụ
-		# 		n = 24, k = n / 8 = 3
-		# 		z[0] = (tổng từ i = 0 đến i = k)m[i]*(2^(8*i))
-		# 		m[i] byte thứ i của tin nhắn is
+# Tạo khóa với p có trước
+def generate_key(p):
+	alpha = find_primitive_root(p)
+	privateKey = PrivateKey(random.randint(1, (p - 1)))
+	publicKey = PublicKey(p, alpha, privateKey)
 
-		return z
+	return {'privateKey': privateKey, 'publicKey': publicKey}
 
-# giải mã integers -->  message bytes
-def decode(aiPlaintext, iNumBits):
-	bytes_array = []
+#---------------------------------------STRING TO NUMBER--------------------------------------
+def to_valid_text(text, alphabet):
+	text = text.lower()
+	validText = ""
+	for c in text:
+		if (alphabet.find(c) >= 0):
+			validText += c
+	return validText
 
-	k = iNumBits//8
+def char_to_int(char, alphabet):
+	return alphabet.find(char)
 
-	for num in aiPlaintext:
-		for i in range(k):
-			temp = num
-			for j in range(i+1, k):
-				temp = temp % (2**(8*j))
-			letter = temp // (2**(8*i))
-			bytes_array.append(letter)
-			num = num - (letter*(2**(8*i)))
+def int_to_char(n, alphabet):
+	n = n % len(alphabet)
+	return alphabet[n]
 
-		# example
-		# if "You" were encoded.
-		# Letter        #ASCII
-		# Y              89
-		# o              111
-		# u              117
-		# if the encoded integer is 7696217 and k = 3
-		# m[0] = 7696217 % 256 % 65536 / (2^(8*0)) = 89 = 'Y'
-		# 7696217 - (89 * (2^(8*0))) = 7696128
-		# m[1] = 7696128 % 65536 / (2^(8*1)) = 111 = 'o'
-		# 7696128 - (111 * (2^(8*1))) = 7667712
-		# m[2] = 7667712 / (2^(8*2)) = 117 = 'u'
+def text_to_num(text, alphabet):
+	textLen = len(text)
+	base = 1
+	num = 0
+	for i in range (0, textLen):
+		num += char_to_int(text[i], alphabet) * base
+		base *= len(alphabet)
+	return num
 
-	decodedText = bytearray(b for b in bytes_array).decode('utf-16')
-	return decodedText
+def num_to_text(num, alphabet):
+	text = ""
+	length = len(alphabet)
+	while(num > length):
+		order = num % length
+		text += int_to_char(order, alphabet)
+		num = (num - order) // length
+	text += int_to_char(num % length, alphabet)
+	return text
 
-# tạo khóa công khai K1 (p, g, h) và khóa bí mật K2 (p, g, x)
-def generate_keys(iNumBits=256):
-		# p: số nguyên tố
-		# g: thành phần nguyên tố của p
-		# x: số ngẫu nhiên trên đoạn (0, p-1)
-		# h = g ^ x mod p
-		p = gp.generatePrime(iNumBits, ATTEMPTS)
-		g = find_primitive_root(p)
-		g = modexp( g, 2, p )
-		x = random.randint( 1, (p - 1) // 2 )
-		h = modexp( g, x, p )
+def unitLength(alphabetLength, p):
+	result = 0
+	while (p > alphabetLength):
+		result = result + 1
+		p = p // alphabetLength
+	return int(result)
 
-		publicKey = PublicKey(p, g, h, iNumBits)
-		privateKey = PrivateKey(p, g, x, iNumBits)
+def split_text(text, length):
+	textLen = len(text)
+	if (textLen < length):
+		return {text}
+	chunks = []
+	chunks = [text[i: i + length] for i in range (0, textLen, length)]
+	return chunks
 
-		return {'privateKey': privateKey, 'publicKey': publicKey}
+#--------------------------------------------------------------------------------------------------
+# chuẩn hóa và chia message thành các đoạn có giá trị < p rồi mã hóa
+def encrypt_mess(message, publicKey, alphabet):
+	plainText = to_valid_text(message, alphabet)
+	cypherNum = []
+	unitText = []
+	unitText = split_text(plainText, unitLength(len(alphabet), publicKey.getp()))
+	for unit in unitText:
+		cypherNum.append(encrypt_unit(unit, publicKey, alphabet))
+	return cypherNum
 
-# def is_iNumBits_primeNumber(p, iNumBits):
-# 	return true if p is a prime number and number of bits of p == iNumBits
-
-# def is_primitive_root(g, p):
-# 	return true if g is primitive root of p
-
-
-
-# mã hóa bản tin sPlaintext với khóa key
-def encrypt(key, sPlaintext):
-		z = encode(sPlaintext, key.iNumBits)
-
-		# cipher_pairs sẽ gồm các cặp (c, d) ứng với mỗi số nguyên trong mảng z
-		cipher_pairs = []
-		
-		for i in z:
-				# y: số ngẫu nhiên trên đoạn (0, p-1)
-				y = random.randint( 0, key.p )
-				# c = g^y mod p
-				c = modexp( key.g, y, key.p )
-				# d = ih^y mod p
-				d = (i*modexp( key.h, y, key.p)) % key.p
-				# thêm cặp (c, d) vào list cipher_pairs
-				cipher_pairs.append( [c, d] )
-
-		encryptedStr = ""
-		for pair in cipher_pairs:
-				encryptedStr += str(pair[0]) + ' ' + str(pair[1]) + ' '
+# mã hóa đoạn tin unitText
+def encrypt_unit(unitText, publicKey, alphabet):
+	x = text_to_num(unitText, alphabet)
+	print(x)
+	return encrypt_num(x, publicKey)
 	
-		return encryptedStr
+# mã hóa đoạn tin có giá trị int = x 
+def encrypt_num(x, publicKey):
+	p = publicKey.getp()
+	alpha = publicKey.getalpha()
+	beta = publicKey.getbeta()
+	k = random.randrange(1, p - 2)
+
+	y1 = modexp(alpha, k, p)
+	y2 = (x * modexp(beta, k, p)) % p
+	return CypherNum(y1, y2)
+
+# giải mã với các cặp mã hóa cipherNums
+def decrypt_mess(cypherNums, privateKey, publicKey, alphabet):
+	decryptMess = ""
+	for unit in cypherNums:
+		decryptMess += decrypt_unit(unit, privateKey, publicKey, alphabet)
+	return decryptMess
+
+# giải mã 1 cặp mã hóa 
+def decrypt_unit(unitCypher, privateKey, publicKey, alphabet):
+	p = publicKey.getp()
+	a = privateKey.getvalue()
+	y1Reverse = euclid(unitCypher.gety1(), p)
+	decryptValue = (unitCypher.gety2() * (modexp(y1Reverse, a, p))) % p
+	print("d:", decryptValue)
+	decryptText = num_to_text(decryptValue, alphabet)
+	return decryptText
 
 
-# giải mã với cặp mã hóa cipher với khóa bí mật key
-def decrypt(key, cipher):
-		plaintext = []
-
-		cipherArray = cipher.split()
-		if (not len(cipherArray) % 2 == 0):
-				return "Malformed Cipher Text"
-		for i in range(0, len(cipherArray), 2):
-				c = int(cipherArray[i])
-				d = int(cipherArray[i+1])
-
-				# s = c^x mod p
-				s = modexp( c, key.x, key.p )
-				# plaintext integer = ds^-1 mod p
-				plain = (d*modexp( s, key.p-2, key.p)) % key.p
-				
-				plaintext.append( plain )
-
-		decryptedText = decode(plaintext, key.iNumBits)
-
-		# loại bỏ bytes null
-		decryptedText = "".join([ch for ch in decryptedText if ch != '\x00'])
-
-		return decryptedText
-
-# hàm kiểm tra
-def test(message):
-		assert (sys.version_info >= (3,4))
-		keys = generate_keys()
-		priv = keys['privateKey']
-		pub = keys['publicKey']
-		cipher = encrypt(pub, message)
-		plain = decrypt(priv, cipher)
-		return message == plain
+p = gp.generatePrime(80, 15)
+alpha = find_primitive_root(p)
+privateKey = PrivateKey(20)
+publicKey = PublicKey(p, alpha, privateKey)
+mess = "To prepare for a good night’s sleep we are better off putting the brakes on caffeine consumption as early as 3 p.m"
+print("TEXT")
+e = encrypt_mess(mess, publicKey, ALPHABET)
+print("DECRYPT")
+d = decrypt_mess(e, privateKey, publicKey, ALPHABET)
+print("-----------------------------------------")
+print("TIN BAN ĐẦU: \n", mess)
+print("BÃN GIẢI MÃ: \n", d)
