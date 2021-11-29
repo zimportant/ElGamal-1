@@ -72,13 +72,26 @@ def modexp( base, exp, modulus ):
 def find_primitive_root(p):
 	if p == 2:
 		return 1
-	p1 = 2
-	p2 = (p - 1) // p1
+
 	while( 1 ):
 		g = random.randint( 2, p-1 )
-		if not (pow( g, (p-1)//p1, p ) == 1):
-			if not pow( g, (p-1)//p2, p ) == 1:
-				return g
+		if check_primitive_root(g, p):
+			return g
+
+# kiểm tra căn nguyên thủy g mô-đun p với p là "số nguyên tố an toàn"
+def check_primitive_root(g, p):
+	if p == 2:
+		return g == 1
+
+	p1 = 2
+	p2 = (p - 1) // p1
+	
+	if not (pow( g, (p-1)//p1, p ) == 1):
+		if not pow( g, (p-1)//p2, p ) == 1:
+			return True
+
+	return False
+
 
 # tạo khóa công khai K1 (p, alpha, beta) và khóa bí mật K2 (a)
 def generate_random_keys(numBits=256):

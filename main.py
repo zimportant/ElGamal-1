@@ -1,8 +1,11 @@
 import random
 import ElGamal
+import miller_rabin.GenPrime as gp
+import miller_rabin.IsPrime as ip
 from tkinter import *
 from tkinter import ttk, messagebox
 from PIL import ImageTk, Image
+import Crypto.Util.number as number
 
 # setup interface
 root = Tk()
@@ -36,12 +39,12 @@ bitNum_value.set(option[0])
 bitNum_option = OptionMenu(root, bitNum_value, *option)
 bitNum_option.place(x=270, y=60)
 
-# anpha
-anpha_label = Label(root, text='anpha = ')
-anpha_label.place(x=110, y=108)
+# alpha
+alpha_label = Label(root, text='alpha = ')
+alpha_label.place(x=110, y=108)
 
-anpha_text = Text(root, width=65, height=2)
-anpha_text.place(x=170, y=100)
+alpha_text = Text(root, width=65, height=2)
+alpha_text.place(x=170, y=100)
 
 # p
 p_label = Label(root, text='p = ')
@@ -65,12 +68,12 @@ def keys_generate():
     decrypt_message_text.delete('1.0', END)
 
     # tạo khóa mới
-    p = ElGamal.generate_keys(bitNum_value.get())
+    p = gp.generatePrime(bitNum_value.get(), ElGamal.ATTEMPTS)
     p_text.delete('1.0', END)
     p_text.insert(END, p)
     g = ElGamal.find_primitive_root(p)
-    anpha_text.delete('1.0', END)
-    anpha_text.insert(END, g)
+    alpha_text.delete('1.0', END)
+    alpha_text.insert(END, g)
     x = random.randint( 1, (p - 1) // 2 )
     a_text.delete('1.0', END)
     a_text.insert(END, x)
@@ -80,7 +83,28 @@ keys_generate_button.place(x=500, y=64)
 
 # kiểm tra khóa đã thỏa mãn điều kiện hay chưa
 def keys_check():
-    messagebox.showerror("Error", "Check keys is not active now, please try again later")
+    iNumBits = bitNum_value.get()
+    p = int(p_text.get('1.0', "end-1c"))
+    g = int(alpha_text.get('1.0', "end-1c"))
+    x = int(a_text.get('1.0', "end-1c"))
+
+    if not len(bin(p)) - 2 == iNumBits:
+        messagebox.showerror("Error", "Số bit p không thỏa mãn lựa chọn số bit " + iNumBits)
+        return
+
+    if not number.isPrime(p):
+        messagebox.showerror("Error", "P không phải là số nguyên tố, xin hãy thử lại")
+        return
+
+    if not ElGamal.check_primitive_root(g, p):
+        messagebox.showerror("Error", "alpha không phải căn nguyên tố của p, xin hãy thử lại")
+        return
+
+    if not (1 < x and x < p):
+        messagebox.showerror("Error", "a không nằm trong khoảng 1 < a < p, xin hãy thử lại")
+        return
+
+    messagebox.showinfo("Message", "Các điều kiện khóa bí mật thỏa mãn")
 
 keys_check_button = Button(text='Kiểm tra khóa', bg='white', fg='black', command=keys_check)
 keys_check_button.place(x=600, y=64)
@@ -98,7 +122,6 @@ original_message_text.place(x=170, y=340)
 
 # mã hóa bản tin gốc
 def encrypt():
-    
     # xóa văn bản mã hóa cũ
     result_text.delete('1.0', END)
     cipher_message_text.delete('1.0', END)
@@ -107,7 +130,7 @@ def encrypt():
     # lấy khóa
     iNumBits = bitNum_value.get()
     p = int(p_text.get('1.0', "end-1c"))
-    g = int(anpha_text.get('1.0', "end-1c"))
+    g = int(alpha_text.get('1.0', "end-1c"))
     x = int(a_text.get('1.0', "end-1c"))
     h = ElGamal.modexp( g, x, p )
     publicKey = ElGamal.PublicKey(p, g, h, iNumBits)
@@ -139,7 +162,7 @@ def decrypt():
     # lấy khóa
     iNumBits = bitNum_value.get()
     p = int(p_text.get('1.0', "end-1c"))
-    g = int(anpha_text.get('1.0', "end-1c"))
+    g = int(alpha_text.get('1.0', "end-1c"))
     x = int(a_text.get('1.0', "end-1c"))
     privateKey = ElGamal.PrivateKey(p, g, x, iNumBits)
     

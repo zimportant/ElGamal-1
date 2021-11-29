@@ -1,3 +1,5 @@
+# Source: https://www.geeksforgeeks.org/how-to-generate-large-prime-numbers-for-rsa-algorithm/
+
 import random
 
 # Pre generated primes
