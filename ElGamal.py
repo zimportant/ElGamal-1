@@ -16,10 +16,10 @@ class PrivateKey(object):
 		return self.a
 
 class PublicKey(object):
-	def __init__(self, p, alpha, privateKey):
+	def __init__(self, p, alpha, beta):
 		self.p = p
 		self.alpha = alpha
-		self.beta = modexp(alpha, privateKey.getvalue(), p)
+		self.beta = beta
 
 	@classmethod
 	def of_public(cls, p, alpha, beta):
@@ -164,14 +164,20 @@ def generate_key_with_p(p):
 	return {'privateKey': privateKey, 'publicKey': publicKey}
 
 
-# kiểm tra một khóa có sẵn
-# Correct
-def check_keys(p, g, x):
-	if ip.isPrime(p, ATTEMPTS) and is_primitive_root(g, p) and x >=2 and x <= p-2:
+# kiểm tra khóa công khai có sẵn
+def check_publickey(p, alpha, beta):
+	if ip.isPrime(p, ATTEMPTS) and is_primitive_root(alpha, p) and beta < p:
 		return True
 	else:
 		return False
 
+
+# kiểm tra khóa công khai và khóa bí mật
+def check_keys(p, alpha, a, beta):
+	if ip.isPrime(p, ATTEMPTS) and is_primitive_root(alpha, p) and a >=1 and a <= p-2 and beta == modexp(alpha, a, p):
+		return True
+	else:
+		return False
 #-----------------------------------------MÃ HÓA VÀ GIẢI MÃ------------------------------------------------
 # trả về y1
 def merge_y1(encryptNums):
@@ -250,36 +256,3 @@ def decrypt_unit(unitCypher, privateKey, publicKey, alphabet):
 	decryptText = Text.numToText(decryptValue, alphabet)
 	return decryptText
 
-
-#-----------------------------------------Ký và kiểm tra văn bản được ký------------------------------------------------
-# ký văn bản m
-def egGen(p, a, x, m):
-	while 1:
-		k = random.randint(1,p-2)
-		if gcd(p-1, k)==1: break
-	r = modexp(a,k,p)
-	l = Euclid.inverseMod(k, p-1)
-	s = l*(m-x*r)%(p-1)
-	return r,s
-
-
-# kiểm tra văn bản được ký
-def egVer(p, a,	y, r, s, m):
-	if r < 1 or r > p-1 : return False
-	v1 = modexp(y,r,p)%p * modexp(r,s,p)%p
-	v2 = modexp(a,m,p)
-	return v1 == v2
-
-
-# p = gp.generatePrime(80, 15)
-# alpha = find_primitive_root(p)
-# privateKey = PrivateKey(20)
-# publicKey = PublicKey(p, alpha, privateKey)
-# mess = "To prepare for a good night’s sleep we are better off putting the brakes on caffeine consumption as early as 3 p.m"
-# print("TEXT")
-# e = encrypt_mess(mess, publicKey, ALPHABET)
-# print("DECRYPT")
-# d = decrypt_mess(e, privateKey, publicKey, ALPHABET)
-# print("-----------------------------------------")
-# print("TIN BAN ĐẦU: \n", mess)
-# print("BÃN GIẢI MÃ: \n", d)

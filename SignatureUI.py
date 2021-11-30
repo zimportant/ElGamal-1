@@ -41,63 +41,94 @@ bitNum_option.place(x=260, y=65)
 
 # p
 p_label = Label(root, text='p = ')
-p_label.place(x=40, y=160)
+p_label.place(x=40, y=140)
 
-p_text = Text(root, width=48, height=7)
-p_text.place(x=80, y=120)
+p_text = Text(root, width=51, height=6)
+p_text.place(x=80, y=110)
 
-# alpha
-alpha_label = Label(root, text='alpha = ')
-alpha_label.place(x=25, y=310)
+# anpha
+alpha_label = Label(root, text='anpha = ')
+alpha_label.place(x=25, y=270)
 
-alpha_text = Text(root, width=48, height=7)
-alpha_text.place(x=80, y=270)
+alpha_text = Text(root, width=51, height=6)
+alpha_text.place(x=80, y=230)
 
 # a
 a_label = Label(root, text='a = ')
-a_label.place(x=40, y=450)
+a_label.place(x=40, y=390)
 
-a_text = Text(root, width=48, height=7)
-a_text.place(x=80, y=410)
+a_text = Text(root, width=51, height=6)
+a_text.place(x=80, y=350)
+
+# beta
+beta_label = Label(root, text='beta = ')
+beta_label.place(x=30, y=510)
+
+beta_text = Text(root, width=51, height=6)
+beta_text.place(x=80, y=470)
 
 # tạo khóa
 def keys_generate():
+    
     # xóa khóa cũ
+    cipher_message_text.delete('1.0', END)
     p_text.delete('1.0', END)
     alpha_text.delete('1.0', END)
-    cipher_message_text.delete('1.0', END)
     a_text.delete('1.0', END)
+    beta_text.delete('1.0', END)
 
-    # tạo và insert khóa mới
+    # tạo khóa mới
     p = gp.generatePrime(bitNum_value.get(), ElGamal.ATTEMPTS)
     p_text.insert(END, p)
-    g = ElGamal.find_primitive_root(p)
-    alpha_text.insert(END, g)
-    x = random.randint( 1, (p - 1) // 2 )
-    a_text.insert(END, x)
+    alpha = ElGamal.find_primitive_root(p)
+    alpha_text.insert(END, alpha)
+    a = random.randint( 1, (p - 1) // 2 )
+    a_text.insert(END, a)
+    beta = ElGamal.modexp(alpha, a, p)
+    beta_text.insert(END, beta)
 
 keys_generate_button = Button(text='Tạo khóa', bg='white', fg='black', command=keys_generate)
-keys_generate_button.place(x=180, y=550)
+keys_generate_button.place(x=180, y=600)
 
 # kiểm tra khóa đã thỏa mãn điều kiện hay chưa
 def keys_check():
+    
     # lấy khóa
     p = int(p_text.get('1.0', "end-1c"))
-    g = int(alpha_text.get('1.0', "end-1c"))
-    x = int(a_text.get('1.0', 'end-1c'))
+    alpha = int(alpha_text.get('1.0', "end-1c"))
+    a = int(a_text.get('1.0', 'end-1c'))
+    beta = beta_text.get('1.0', 'end-1c')
 
-    # kiểm tra khóa
-    if ip.isPrime(p, ElGamal.ATTEMPTS) == False:
-        messagebox.showerror("Error", "p phải là số nguyên tố")
-    elif ElGamal.is_primitive_root(g, p) == False:
-        messagebox.showerror("Error", "alpha phải là thành phần nguyên thủy của p")
-    elif x < 1 or x > (p-2):
-        messagebox.showerror("Error", "a phải có giá trị nằm trong khoảng [1, p-2]")
+    # kiểm tra beta đã được nhập chưa
+    # chưa được nhập --> tự động tính
+    # đã được nhập --> kiểm tra giá trị
+    if beta:
+        beta = int(beta)
+        # kiểm tra khóa
+        if ip.isPrime(p, ElGamal.ATTEMPTS) == False:
+            messagebox.showerror("Error", "p phải là số nguyên tố")
+        elif ElGamal.is_primitive_root(alpha, p) == False:
+            messagebox.showerror("Error", "alpha phải là thành phần nguyên thủy của p")
+        elif a < 1 or a > (p-2):
+            messagebox.showerror("Error", "a phải có giá trị nằm trong khoảng [1, p-2]")
+        elif beta != ElGamal.modexp(alpha, a, p):
+            messagebox.showerror("Error", "beta phải bằng alpha ^ a mod p")
+        else :
+            messagebox.showinfo('Thông tin khóa', "Khóa của bạn hợp lệ")
     else:
-        messagebox.showinfo('Thông tin khóa', "Khóa của bạn thỏa mãn điều kiện")
+        if ip.isPrime(p, ElGamal.ATTEMPTS) == False:
+            messagebox.showerror("Error", "p phải là số nguyên tố")
+        elif ElGamal.is_primitive_root(alpha, p) == False:
+            messagebox.showerror("Error", "alpha phải là thành phần nguyên thủy của p")
+        elif a < 1 or a > (p-2):
+            messagebox.showerror("Error", "a phải có giá trị nằm trong khoảng [1, p-2]")
+        else:
+            beta = ElGamal.modexp(alpha, a, p)
+            beta_text.insert(END, beta)
+            messagebox.showinfo('Thông tin khóa', "Khóa của bạn hợp lệ")
 
 keys_check_button = Button(text='Kiểm tra khóa', bg='white', fg='black', command=keys_check)
-keys_check_button.place(x=280, y=550)
+keys_check_button.place(x=280, y=600)
 
 # separator
 separator = ttk.Separator(root, orient='horizontal')
@@ -126,14 +157,15 @@ def encrypt():
 
     # lấy khóa
     p = int(p_text.get('1.0', "end-1c")) # Prime number
-    g = int(alpha_text.get('1.0', "end-1c")) # Primitive root
-    x = int(a_text.get('1.0', "end-1c")) # Random
+    alpha = int(alpha_text.get('1.0', "end-1c")) # Primitive root
+    a = int(a_text.get('1.0', "end-1c")) # Random
+    beta = int(beta_text.get('1.0', 'end-1c'))
 
     # kiểm tra khóa
-    if ElGamal.check_keys(p, g, x) == True:
+    if ElGamal.check_keys(p, alpha, a, beta) == True:
 
-        privateKey = ElGamal.PrivateKey(x)
-        publicKey = ElGamal.PublicKey(p, g, privateKey)
+        privateKey = ElGamal.PrivateKey(a)
+        publicKey = ElGamal.PublicKey(p, alpha, beta)
         
         # lấy bản tin gốc
         message = original_message_text.get('1.0', "end-1c")
@@ -143,7 +175,7 @@ def encrypt():
         cipher_message_text.insert(END, signature_message)
         # cipher_message = ElGamal.encrypt(publicKey, message)
     else:
-        messagebox.showerror("Error", "Khóa của bạn không thỏa mã điều kiện, bấm nút Kiểm tra khóa để biết thêm thông tin")
+        messagebox.showerror("Error", "Khóa của bạn không hợp lệ, bấm nút Kiểm tra khóa để biết thêm thông tin")
 
 encrypt_button = Button(text='Ký văn bản', bg='white', fg='black', command=encrypt)
 encrypt_button.place(x=800, y=285)
@@ -160,27 +192,27 @@ def decrypt():
 
     # lấy khóa
     p = int(p_text.get('1.0', "end-1c"))
-    g = int(alpha_text.get('1.0', "end-1c"))
-    x = int(a_text.get('1.0', "end-1c"))
-    privateKey = ElGamal.PrivateKey(x)
-    publicKey = ElGamal.PublicKey(p, g, privateKey)
-    # todo add beta as public value
-    # publicKey = ElGamal.PublicKey.of_public(p, g, privateKey)
+    alpha = int(alpha_text.get('1.0', "end-1c"))
+    beta = int(beta_text.get('1.0', 'end-1c'))
+    publicKey = ElGamal.PublicKey(p, alpha, beta)
     
     # kiểm tra khóa
-    if ElGamal.check_keys(p, g, x) == True:
-        # lấy bản tin mã hóa
+    if ElGamal.check_publickey(p, alpha, beta) == True:
+        # lấy văn bản và chữ ký
         message = original_message_text.get('1.0', "end-1c")
         signature = cipher_message_text.get('1.0', "end-1c")
         print(message, signature)
 
         sig_num = ElGamal.SigNum.of_text(signature)
         
-        # giải mã và hiển thị bản tin sau khi giải mã 
+        # Xác thực chữ ký và hiển thị kết quả xác thực 
         is_verified = ElGamal.verify_message(sig_num, message, publicKey, ElGamal.ALPHABET)
-        messagebox.showinfo("Status", str(is_verified))
+        if is_verified:
+            messagebox.showinfo("Chữ ký", "Chữ ký được xác thực")
+        else:
+            messagebox.showerror("Chữ ký", "Chữ ký không được xác thực")
     else:
-        messagebox.showerror("Error", "Khóa của bạn không thỏa mã điều kiện, bấm nút Kiểm tra khóa để biết thêm thông tin")
+        messagebox.showerror("Error", "Khóa của bạn không hợp lệ, bấm nút Kiểm tra khóa để biết thêm thông tin")
 
 decrypt_button = Button(text='Kiểm tra chữ ký', bg='white', fg='black', command=decrypt)
 decrypt_button.place(x=800, y=565)
