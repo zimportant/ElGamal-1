@@ -46,12 +46,12 @@ p_label.place(x=40, y=160)
 p_text = Text(root, width=48, height=7)
 p_text.place(x=80, y=120)
 
-# anpha
-anpha_label = Label(root, text='anpha = ')
-anpha_label.place(x=25, y=310)
+# alpha
+alpha_label = Label(root, text='alpha = ')
+alpha_label.place(x=25, y=310)
 
-anpha_text = Text(root, width=48, height=7)
-anpha_text.place(x=80, y=270)
+alpha_text = Text(root, width=48, height=7)
+alpha_text.place(x=80, y=270)
 
 # a
 a_label = Label(root, text='a = ')
@@ -64,7 +64,7 @@ a_text.place(x=80, y=410)
 def keys_generate():
     # xóa khóa cũ
     p_text.delete('1.0', END)
-    anpha_text.delete('1.0', END)
+    alpha_text.delete('1.0', END)
     cipher_message_text.delete('1.0', END)
     a_text.delete('1.0', END)
 
@@ -72,7 +72,7 @@ def keys_generate():
     p = gp.generatePrime(bitNum_value.get(), ElGamal.ATTEMPTS)
     p_text.insert(END, p)
     g = ElGamal.find_primitive_root(p)
-    anpha_text.insert(END, g)
+    alpha_text.insert(END, g)
     x = random.randint( 1, (p - 1) // 2 )
     a_text.insert(END, x)
 
@@ -83,14 +83,14 @@ keys_generate_button.place(x=180, y=550)
 def keys_check():
     # lấy khóa
     p = int(p_text.get('1.0', "end-1c"))
-    g = int(anpha_text.get('1.0', "end-1c"))
+    g = int(alpha_text.get('1.0', "end-1c"))
     x = int(a_text.get('1.0', 'end-1c'))
 
     # kiểm tra khóa
     if ip.isPrime(p, ElGamal.ATTEMPTS) == False:
         messagebox.showerror("Error", "p phải là số nguyên tố")
     elif ElGamal.is_primitive_root(g, p) == False:
-        messagebox.showerror("Error", "anpha phải là thành phần nguyên thủy của p")
+        messagebox.showerror("Error", "alpha phải là thành phần nguyên thủy của p")
     elif x < 1 or x > (p-2):
         messagebox.showerror("Error", "a phải có giá trị nằm trong khoảng [1, p-2]")
     else:
@@ -125,23 +125,23 @@ def encrypt():
     cipher_message_text.delete('1.0', END)
 
     # lấy khóa
-    p = int(p_text.get('1.0', "end-1c"))
-    iNumBits = ElGamal.bit_length(p)
-    print(iNumBits)
-    g = int(anpha_text.get('1.0', "end-1c"))
-    x = int(a_text.get('1.0', "end-1c"))
+    p = int(p_text.get('1.0', "end-1c")) # Prime number
+    g = int(alpha_text.get('1.0', "end-1c")) # Primitive root
+    x = int(a_text.get('1.0', "end-1c")) # Random
 
     # kiểm tra khóa
     if ElGamal.check_keys(p, g, x) == True:
-        h = ElGamal.modexp( g, x, p )
-        publicKey = ElGamal.PublicKey(p, g, h, iNumBits)
+
+        privateKey = ElGamal.PrivateKey(x)
+        publicKey = ElGamal.PublicKey(p, g, privateKey)
         
         # lấy bản tin gốc
         message = original_message_text.get('1.0', "end-1c")
         
         # mã hóa và hiển thị bản tin mã hóa
-        cipher_message = ElGamal.encrypt(publicKey, message)
-        cipher_message_text.insert(END, cipher_message)
+        signature_message = ElGamal.sign_message(message, privateKey, publicKey, ElGamal.ALPHABET)
+        cipher_message_text.insert(END, signature_message)
+        # cipher_message = ElGamal.encrypt(publicKey, message)
     else:
         messagebox.showerror("Error", "Khóa của bạn không thỏa mã điều kiện, bấm nút Kiểm tra khóa để biết thêm thông tin")
 
@@ -160,19 +160,25 @@ def decrypt():
 
     # lấy khóa
     p = int(p_text.get('1.0', "end-1c"))
-    iNumBits = p.bit_length()
-    g = int(anpha_text.get('1.0', "end-1c"))
+    g = int(alpha_text.get('1.0', "end-1c"))
     x = int(a_text.get('1.0', "end-1c"))
-    privateKey = ElGamal.PrivateKey(p, g, x, iNumBits)
+    privateKey = ElGamal.PrivateKey(x)
+    publicKey = ElGamal.PublicKey(p, g, privateKey)
+    # todo add beta as public value
+    # publicKey = ElGamal.PublicKey.of_public(p, g, privateKey)
     
     # kiểm tra khóa
     if ElGamal.check_keys(p, g, x) == True:
         # lấy bản tin mã hóa
-        cipher_message = cipher_message_text.get('1.0', "end-1c")
+        message = original_message_text.get('1.0', "end-1c")
+        signature = cipher_message_text.get('1.0', "end-1c")
+        print(message, signature)
+
+        sig_num = ElGamal.SigNum.of_text(signature)
         
         # giải mã và hiển thị bản tin sau khi giải mã 
-        decrypt_message = ElGamal.decrypt(privateKey, cipher_message)
-        # decrypt_message_text.insert(END, decrypt_message)
+        is_verified = ElGamal.verify_message(sig_num, message, publicKey, ElGamal.ALPHABET)
+        messagebox.showinfo("Status", str(is_verified))
     else:
         messagebox.showerror("Error", "Khóa của bạn không thỏa mã điều kiện, bấm nút Kiểm tra khóa để biết thêm thông tin")
 

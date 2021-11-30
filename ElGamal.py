@@ -21,6 +21,12 @@ class PublicKey(object):
 		self.alpha = alpha
 		self.beta = modexp(alpha, privateKey.getvalue(), p)
 
+	@classmethod
+	def of_public(cls, p, alpha, beta):
+		pk = cls(p, alpha, 1)
+		pk.beta = beta
+		return pk
+	
 	def getp(self):
 		return self.p
 	
@@ -40,6 +46,65 @@ class CypherNum(object):
 	
 	def gety2(self):
 		return self.y2
+
+class SigNum(object):
+	# lmd = a ^ k mod p
+	# sig = (h(x) - a * lmd) * k ^ -1 mod (p - 1)
+	def __init__(self, lmd, sig):
+		self.lmd = lmd
+		self.sig = sig
+	
+	@classmethod
+	def of(cls, a, alpha, k, p, hx):
+		lmd = modexp(alpha, k, p)
+		inv_k = Euclid.inverseMod(k, p - 1) # inv_k = k ^ -1 mod (p - 1)
+		sig = ((hx - a * lmd) * inv_k) % (p - 1)
+		return cls(lmd, sig)
+
+	@classmethod
+	def of_key(cls, message, privateKey, publicKey, alphabet):
+		a = privateKey.getvalue()
+		alpha = publicKey.getalpha()
+		p = publicKey.getp()
+		while True:
+			k = random.randrange(2, p - 2)
+			if gcd(p - 1, k) == 1: break
+
+		hx = Text.textToNum(message, alphabet)
+		while True:
+			sig_num = cls.of(a, alpha, k, p, hx)
+			if not sig_num.sig == 0:
+				return sig_num
+	
+	@classmethod
+	def of_sig(cls, _lmd, _sig):
+		return cls(_lmd, _sig)
+
+	@classmethod
+	def of_text(cls, txt):
+		lhs, rhs = [int(x.strip()) for x in txt[1:-1].split(',')]
+		return cls(lhs, rhs)
+
+	def verify(self, message, publicKey, alphabet):
+		alpha = publicKey.getalpha()
+		p = publicKey.getp()
+		beta = publicKey.getbeta()
+		k = random.randrange(2, p - 2)
+		hx = Text.textToNum(message, alphabet)
+
+		if 0 < self.lmd and self.lmd < p:
+			if 0 < self.sig and self.sig < p - 1:
+				lhs = (modexp(beta, self.lmd, p) * modexp(self.lmd, self.sig, p)) % p
+				rhs = modexp(alpha, hx, p)
+				# print('lhs: ', lhs)
+				# print('rhs: ', rhs)
+				
+				return lhs == rhs
+		
+		return False
+
+	def __repr__(self):
+		return "(" + str(self.lmd) + ", " + str(self.sig) + ")"
 
 # tính gcd(a, b) giả sử a > b
 def gcd( a, b ):
@@ -100,6 +165,7 @@ def generate_key_with_p(p):
 
 
 # kiểm tra một khóa có sẵn
+# Correct
 def check_keys(p, g, x):
 	if ip.isPrime(p, ATTEMPTS) and is_primitive_root(g, p) and x >=2 and x <= p-2:
 		return True
@@ -121,6 +187,19 @@ def merge_y2(encryptNums):
 		y2 += str(encryptUnit.gety2())
 		y2 += "\n"
 	return y2
+
+# chuẩn hóa và chia message thành các đoạn có giá trị < p rồi tạo chữ ký
+def sign_message(message, privateKey, publicKey, alphabet):
+	# chuẩn hóa message -> plainText
+	plainText = Text.toValidText(message, alphabet)
+
+	sig_num = SigNum.of_key(message, privateKey, publicKey, alphabet)
+
+	return sig_num.__repr__()
+
+def verify_message(sig_num, message, publicKey, alphabet):
+	# chuẩn hóa message -> plainText
+	return sig_num.verify(message, publicKey, alphabet)
 
 # chuẩn hóa và chia message thành các đoạn có giá trị < p rồi mã hóa
 def encrypt_mess(message, publicKey, alphabet):
