@@ -89,7 +89,7 @@ def keys_check():
     x = int(a_text.get('1.0', "end-1c"))
 
     if not len(bin(p)) - 2 == iNumBits:
-        messagebox.showerror("Error", "Số bit p không thỏa mãn lựa chọn số bit " + iNumBits)
+        messagebox.showerror("Error", "Số bit p không thỏa mãn lựa chọn số bit " + str(iNumBits))
         return
 
     if not number.isPrime(p):

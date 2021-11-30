@@ -6,7 +6,7 @@ import Euclid
 import TextProcessing as Text
 
 ATTEMPTS = 23
-ALPHABET = "abcdefghijklmnopqrstuvwxyz 0123456789"
+ALPHABET = ".,:;!?-'()[]&+=<>/*_$#@^abcdefghijklmnopqrstuvwxyzáàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệóòỏõọôốồổỗộơớờởỡợíìỉĩịúùủũụưứừửữựýỳỷỹỵđ 0123456789"
 
 class PrivateKey(object):
 	def __init__(self, a):
@@ -41,37 +41,42 @@ class CypherNum(object):
 	def gety2(self):
 		return self.y2
 
+# tính gcd(a, b) giả sử a > b
+def gcd( a, b ):
+		while b != 0:
+			c = a % b
+			a = b
+			b = c
+		return a
 
 # trả về base^exp mod modulus
 def modexp( base, exp, modulus ):
 		return pow(base, exp, modulus)
 
-#-----------------------------------------------SINH KHÓA-------------------------------------------------
 
+
+#-----------------------------------------------SINH KHÓA-------------------------------------------------
 # tìm một số g là thành phần nguyên thủy của số nguyên tố p
 def find_primitive_root(p):
 	if p == 2:
 		return 1
-
-	while( 1 ):
-		g = random.randint( 2, p-1 )
-		if check_primitive_root(g, p):
-			return g
-
-# kiểm tra căn nguyên thủy g mô-đun p với p là "số nguyên tố an toàn"
-def check_primitive_root(g, p):
-	if p == 2:
-		return g == 1
-
 	p1 = 2
 	p2 = (p - 1) // p1
-	
+	while( 1 ):
+		g = random.randint( 2, p-1 )
+		if not (pow( g, (p-1)//p1, p ) == 1):
+			if not pow( g, (p-1)//p2, p ) == 1:
+				return g
+
+# kiểm tra g có phải là thành phần nguyên thủy của p ko
+def is_primitive_root(g, p):
+	p1 = 2
+	p2 = (p - 1) // p1
 	if not (pow( g, (p-1)//p1, p ) == 1):
-		if not pow( g, (p-1)//p2, p ) == 1:
-			return True
-
-	return False
-
+			if not pow( g, (p-1)//p2, p ) == 1:
+				return True
+	else:
+		return False
 
 # tạo khóa công khai K1 (p, alpha, beta) và khóa bí mật K2 (a)
 def generate_keys(numBits=256):
@@ -94,6 +99,13 @@ def generate_key_with_p(p):
 	return {'privateKey': privateKey, 'publicKey': publicKey}
 
 
+# kiểm tra một khóa có sẵn
+def check_keys(p, g, x):
+	if ip.isPrime(p, ATTEMPTS) and is_primitive_root(g, p) and x >=2 and x <= p-2:
+		return True
+	else:
+		return False
+
 #-----------------------------------------MÃ HÓA VÀ GIẢI MÃ------------------------------------------------
 # trả về y1
 def merge_y1(encryptNums):
@@ -114,14 +126,14 @@ def merge_y2(encryptNums):
 def encrypt_mess(message, publicKey, alphabet):
 	# chuẩn hóa message -> plainText
 	plainText = Text.toValidText(message, alphabet)
-	cypherNums = []
+	cypherNum = []
 	unitText = []
 	# chia plainText thành các đoạn có giá trị < p
 	unitText = Text.splitText(plainText, Text.unitLength(len(alphabet), publicKey.getp()))
 	# mã hóa từng đoạn 
 	for unit in unitText:
-		cypherNums.append(encrypt_unit(unit, publicKey, alphabet))
-	return cypherNums
+		cypherNum.append(encrypt_unit(unit, publicKey, alphabet))
+	return cypherNum
 
 # mã hóa đoạn tin unitText
 def encrypt_unit(unitText, publicKey, alphabet):
@@ -160,18 +172,35 @@ def decrypt_unit(unitCypher, privateKey, publicKey, alphabet):
 	return decryptText
 
 
-p = gp.generatePrime(80, 15)
-alpha = find_primitive_root(p)
-privateKey = PrivateKey(20)
-publicKey = PublicKey(p, alpha, privateKey)
-mess = "To prepare for a good night’s sleep we are better off putting the brakes on caffeine consumption as early as 3 p.m"
-print("TEXT")
-e = encrypt_mess(mess, publicKey, ALPHABET)
-print("ENCRYPT")
-print("y1", merge_y1(e))
-print("y2", merge_y2(e))
-print("DECRYPT")
-d = decrypt_mess(e, privateKey, publicKey, ALPHABET)
-print("-----------------------------------------")
-print("TIN BAN ĐẦU: \n", mess)
-print("BÃN GIẢI MÃ: \n", d)
+#-----------------------------------------Ký và kiểm tra văn bản được ký------------------------------------------------
+# ký văn bản m
+def egGen(p, a, x, m):
+	while 1:
+		k = random.randint(1,p-2)
+		if gcd(p-1, k)==1: break
+	r = modexp(a,k,p)
+	l = Euclid.inverseMod(k, p-1)
+	s = l*(m-x*r)%(p-1)
+	return r,s
+
+
+# kiểm tra văn bản được ký
+def egVer(p, a,	y, r, s, m):
+	if r < 1 or r > p-1 : return False
+	v1 = modexp(y,r,p)%p * modexp(r,s,p)%p
+	v2 = modexp(a,m,p)
+	return v1 == v2
+
+
+# p = gp.generatePrime(80, 15)
+# alpha = find_primitive_root(p)
+# privateKey = PrivateKey(20)
+# publicKey = PublicKey(p, alpha, privateKey)
+# mess = "To prepare for a good night’s sleep we are better off putting the brakes on caffeine consumption as early as 3 p.m"
+# print("TEXT")
+# e = encrypt_mess(mess, publicKey, ALPHABET)
+# print("DECRYPT")
+# d = decrypt_mess(e, privateKey, publicKey, ALPHABET)
+# print("-----------------------------------------")
+# print("TIN BAN ĐẦU: \n", mess)
+# print("BÃN GIẢI MÃ: \n", d)
