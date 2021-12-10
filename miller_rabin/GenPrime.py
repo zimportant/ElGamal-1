@@ -55,12 +55,17 @@ def isMillerRabinPassed(mrc, attempts):
             return False
     return True
 
+
+# check that p is "safe" prime
+# that p = 2q + 1
+# whereas q is also a prime
 def generatePrime(length, attempts):
     if (length < 1):
         return -1
+
     is_prime = False
     while (not is_prime):
-        prime_candidate = getLowLevelPrime(length)
+        prime_candidate = getLowLevelPrime(length - 1)
         if isMillerRabinPassed(prime_candidate, attempts):
             return prime_candidate
         else:

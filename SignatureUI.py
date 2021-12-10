@@ -46,8 +46,8 @@ p_label.place(x=40, y=140)
 p_text = Text(root, width=51, height=6)
 p_text.place(x=80, y=110)
 
-# anpha
-alpha_label = Label(root, text='anpha = ')
+# alpha
+alpha_label = Label(root, text='alpha = ')
 alpha_label.place(x=25, y=270)
 
 alpha_text = Text(root, width=51, height=6)

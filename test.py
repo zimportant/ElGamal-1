@@ -7,13 +7,18 @@ import Crypto.Util.number as number
 import random
 import sys
 import ElGamal
+import Aks
+
 
 class TestElGamalMethods(unittest.TestCase):
 
     def test_generate_prime_length_100_1(self):
+        aks = Aks.Aks()
+
         prime = gp.generatePrime(100, 23)
+        print(prime)
         self.assertEqual(len(bin(prime)) - 2, 100)
-        self.assertEqual(number.isPrime(prime), True)
+        self.assertEqual(aks.is_prime(prime), True)
 
     def test_generate_prime_length_100_2(self):
         prime = gp.generatePrime(100, 23)
@@ -136,6 +141,16 @@ class TestElGamalMethods(unittest.TestCase):
 
         self.assertTrue(sig_num.verify(message, publicKey, ElGamal.ALPHABET))
 
+    def sieve_test(self):
+        aks = Aks.Aks()
+
+        for value in range(2, 2000):
+            self.assertEqual(number.isPrime(value), aks.is_prime(value))
+
+
+    def quick_test(self):
+        aks = Aks.Aks()
+        print(aks.is_prime(1_000_007))
 
 if __name__ == '__main__':
     unittest.main()
