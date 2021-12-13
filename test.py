@@ -1,8 +1,8 @@
 import unittest
 
 import string
-import miller_rabin.GenPrime as gp
-import miller_rabin.IsPrime as ip
+from miller_rabin import GenPrime as gp
+from miller_rabin import IsPrime as ip
 import Crypto.Util.number as number
 import random
 import sys
@@ -13,12 +13,9 @@ import Aks
 class TestElGamalMethods(unittest.TestCase):
 
     def test_generate_prime_length_100_1(self):
-        aks = Aks.Aks()
-
         prime = gp.generatePrime(100, 23)
-        print(prime)
         self.assertEqual(len(bin(prime)) - 2, 100)
-        self.assertEqual(aks.is_prime(prime), True)
+        self.assertEqual(number.isPrime(prime), True)
 
     def test_generate_prime_length_100_2(self):
         prime = gp.generatePrime(100, 23)
@@ -150,7 +147,8 @@ class TestElGamalMethods(unittest.TestCase):
 
     def quick_test(self):
         aks = Aks.Aks()
-        print(aks.is_prime(1_000_007))
+        self.assertTrue(aks.is_prime(1000000007))
+        # print(aks.is_prime(1000007))
 
 if __name__ == '__main__':
     unittest.main()

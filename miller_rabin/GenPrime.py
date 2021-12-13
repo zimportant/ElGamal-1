@@ -65,7 +65,7 @@ def generatePrime(length, attempts):
 
     is_prime = False
     while (not is_prime):
-        prime_candidate = getLowLevelPrime(length - 1)
+        prime_candidate = getLowLevelPrime(length)
         if isMillerRabinPassed(prime_candidate, attempts):
             return prime_candidate
         else:
